@@ -201,7 +201,7 @@ public class SignaturePad extends View {
         mVelocityFilterWeight = velocityFilterWeight;
     }
 
-    public Boolean isEraserType(){
+    public Boolean isEraserType() {
         return isEraser;
     }
 
@@ -228,9 +228,9 @@ public class SignaturePad extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+
         if (!isEnabled())
             return false;
-
 
         toolType = event.getToolType(event.getActionIndex());
         if (!isFingerEnable && toolType != MotionEvent.TOOL_TYPE_STYLUS) {
@@ -239,9 +239,9 @@ public class SignaturePad extends View {
 
         float eventX = event.getX();
         float eventY = event.getY();
-
-
+        
         if (isEraser) {
+            ensureSignatureBitmap();
             eraser.handleEraserEvent(event, mSignatureBitmapCanvas);
         } else {
             switch (event.getAction()) {
@@ -271,9 +271,6 @@ public class SignaturePad extends View {
             }
         }
 
-
-
-        //invalidate();
         invalidate(
                 (int) (mDirtyRect.left - mMaxWidth),
                 (int) (mDirtyRect.top - mMaxWidth),
