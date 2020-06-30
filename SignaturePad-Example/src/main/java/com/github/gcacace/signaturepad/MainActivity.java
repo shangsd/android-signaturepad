@@ -80,7 +80,10 @@ public class MainActivity extends Activity {
                 } else {
                     Toast.makeText(MainActivity.this, "Unable to store the signature", Toast.LENGTH_SHORT).show();
                 }
-                if (addSvgSignatureToGallery(mSignaturePad.getSignatureSvg())) {
+
+                String signatureSvg = mSignaturePad.getSignatureSvg();
+                Log.e("test__",signatureSvg);
+                if (addSvgSignatureToGallery(signatureSvg)) {
                     Toast.makeText(MainActivity.this, "SVG Signature saved into the Gallery", Toast.LENGTH_SHORT).show();
                 } else {
                     Toast.makeText(MainActivity.this, "Unable to store the SVG signature", Toast.LENGTH_SHORT).show();

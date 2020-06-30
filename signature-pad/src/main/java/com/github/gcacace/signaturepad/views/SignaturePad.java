@@ -12,13 +12,13 @@ import android.graphics.RectF;
 import android.os.Bundle;
 import android.os.Parcelable;
 import android.util.AttributeSet;
-import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewTreeObserver;
 
 import com.github.gcacace.signaturepad.R;
 import com.github.gcacace.signaturepad.utils.Bezier;
+import com.github.gcacace.signaturepad.utils.BitmapUtils;
 import com.github.gcacace.signaturepad.utils.ControlTimedPoints;
 import com.github.gcacace.signaturepad.utils.SvgBuilder;
 import com.github.gcacace.signaturepad.utils.TimedPoint;
@@ -54,14 +54,16 @@ public class SignaturePad extends View {
     private OnSignedListener mOnSignedListener;
     private boolean mClearOnDoubleClick;
 
-    //Double click detector
-    private GestureDetector mGestureDetector;
+    //Click values
+    private long mFirstClick;
+    private int mCountClick;
+    private static final int DOUBLE_CLICK_DELAY_MS = 200;
 
     //Default attribute values
     private final int DEFAULT_ATTR_PEN_MIN_WIDTH_PX = 3;
-    private final int DEFAULT_ATTR_PEN_MAX_WIDTH_PX = 7;
+    private final int DEFAULT_ATTR_PEN_MAX_WIDTH_PX = 10;
     private final int DEFAULT_ATTR_PEN_COLOR = Color.BLACK;
-    private final float DEFAULT_ATTR_VELOCITY_FILTER_WEIGHT = 0.9f;
+    private final float DEFAULT_ATTR_VELOCITY_FILTER_WEIGHT = 0.3f;
     private final boolean DEFAULT_ATTR_CLEAR_ON_DOUBLE_CLICK = false;
 
     private Paint mPaint = new Paint();
@@ -98,30 +100,26 @@ public class SignaturePad extends View {
 
         clearView();
 
-        mGestureDetector = new GestureDetector(context, new GestureDetector.SimpleOnGestureListener() {
-            @Override
-            public boolean onDoubleTap(MotionEvent e) {
-                return onDoubleClick();
-            }
-        });
     }
 
+    /*
     @Override
     protected Parcelable onSaveInstanceState() {
         Bundle bundle = new Bundle();
         bundle.putParcelable("superState", super.onSaveInstanceState());
-        if (this.mHasEditState == null || this.mHasEditState) {
+        if(this.mHasEditState == null || this.mHasEditState){
             this.mBitmapSavedState = this.getTransparentSignatureBitmap();
         }
         bundle.putParcelable("signatureBitmap", this.mBitmapSavedState);
         return bundle;
-    }
+    }*/
 
     @Override
     protected void onRestoreInstanceState(Parcelable state) {
-        if (state instanceof Bundle) {
+        if (state instanceof Bundle)
+        {
             Bundle bundle = (Bundle) state;
-            this.setSignatureBitmap((Bitmap) bundle.getParcelable("signatureBitmap"));
+            this.setSignatureBitmap((Bitmap)bundle.getParcelable("signatureBitmap"));
             this.mBitmapSavedState = bundle.getParcelable("signatureBitmap");
             state = bundle.getParcelable("superState");
         }
@@ -212,22 +210,22 @@ public class SignaturePad extends View {
             case MotionEvent.ACTION_DOWN:
                 getParent().requestDisallowInterceptTouchEvent(true);
                 mPoints.clear();
-                if (mGestureDetector.onTouchEvent(event)) break;
+                if (isDoubleClick()) break;
                 mLastTouchX = eventX;
                 mLastTouchY = eventY;
-                addPoint(getNewPoint(eventX, eventY));
-                if (mOnSignedListener != null) mOnSignedListener.onStartSigning();
+                addPoint(getNewPoint(eventX, eventY), event.getPressure());
+                if(mOnSignedListener != null) mOnSignedListener.onStartSigning();
 
             case MotionEvent.ACTION_MOVE:
                 resetDirtyRect(eventX, eventY);
-                addPoint(getNewPoint(eventX, eventY));
-                setIsEmpty(false);
+                addPoint(getNewPoint(eventX, eventY), event.getPressure());
                 break;
 
             case MotionEvent.ACTION_UP:
                 resetDirtyRect(eventX, eventY);
-                addPoint(getNewPoint(eventX, eventY));
+                addPoint(getNewPoint(eventX, eventY), event.getPressure());
                 getParent().requestDisallowInterceptTouchEvent(true);
+                setIsEmpty(false);
                 break;
 
             default:
@@ -270,6 +268,16 @@ public class SignaturePad extends View {
         Bitmap whiteBgBitmap = Bitmap.createBitmap(originalBitmap.getWidth(), originalBitmap.getHeight(), Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(whiteBgBitmap);
         canvas.drawColor(Color.WHITE);
+        canvas.drawBitmap(originalBitmap, 0, 0, null);
+        return whiteBgBitmap;
+    }
+
+    public Bitmap getTrimmedSignatureBitmap(boolean transparent) {
+        Bitmap originalBitmap = BitmapUtils.trim(getTransparentSignatureBitmap());
+
+        Bitmap whiteBgBitmap = Bitmap.createBitmap(originalBitmap.getWidth(), originalBitmap.getHeight(), Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(whiteBgBitmap);
+        canvas.drawColor(transparent ? Color.TRANSPARENT : Color.WHITE);
         canvas.drawBitmap(originalBitmap, 0, 0, null);
         return whiteBgBitmap;
     }
@@ -404,10 +412,21 @@ public class SignaturePad extends View {
         return Bitmap.createBitmap(mSignatureBitmap, xMin, yMin, xMax - xMin, yMax - yMin);
     }
 
-    private boolean onDoubleClick() {
+    private boolean isDoubleClick() {
         if (mClearOnDoubleClick) {
-            this.clearView();
-            return true;
+            if (mFirstClick != 0 && System.currentTimeMillis() - mFirstClick > DOUBLE_CLICK_DELAY_MS) {
+                mCountClick = 0;
+            }
+            mCountClick++;
+            if (mCountClick == 1) {
+                mFirstClick = System.currentTimeMillis();
+            } else if (mCountClick == 2) {
+                long lastClick = System.currentTimeMillis();
+                if (lastClick - mFirstClick < DOUBLE_CLICK_DELAY_MS) {
+                    this.clearView();
+                    return true;
+                }
+            }
         }
         return false;
     }
@@ -420,7 +439,7 @@ public class SignaturePad extends View {
             timedPoint = new TimedPoint();
         } else {
             // Get point from cache
-            timedPoint = mPointsCache.remove(mCacheSize - 1);
+            timedPoint = mPointsCache.remove(mCacheSize-1);
         }
 
         return timedPoint.set(x, y);
@@ -430,7 +449,7 @@ public class SignaturePad extends View {
         mPointsCache.add(point);
     }
 
-    private void addPoint(TimedPoint newPoint) {
+    private void addPoint(TimedPoint newPoint, float pressure) {
         mPoints.add(newPoint);
 
         int pointsCount = mPoints.size();
@@ -457,7 +476,7 @@ public class SignaturePad extends View {
 
             // The new width is a function of the velocity. Higher velocities
             // correspond to thinner strokes.
-            float newWidth = strokeWidth(velocity);
+            float newWidth = strokeWidth(velocity, pressure);
 
             // The Bezier's width starts out as last curve's final width, and
             // gradually changes to the stroke width just calculated. The new
@@ -489,7 +508,7 @@ public class SignaturePad extends View {
         ensureSignatureBitmap();
         float originalWidth = mPaint.getStrokeWidth();
         float widthDelta = endWidth - startWidth;
-        float drawSteps = (float) Math.ceil(curve.length());
+        float drawSteps = (float) Math.floor(curve.length());
 
         for (int i = 0; i < drawSteps; i++) {
             // Calculate the Bezier (x, y) coordinate for this step.
@@ -546,8 +565,9 @@ public class SignaturePad extends View {
         return mControlTimedPointsCached.set(getNewPoint(m1X + tx, m1Y + ty), getNewPoint(m2X + tx, m2Y + ty));
     }
 
-    private float strokeWidth(float velocity) {
-        return Math.max(mMaxWidth / (velocity + 1), mMinWidth);
+    private float strokeWidth(float velocity, float pressure) {
+        float velocityWidth =  Math.max(mMaxWidth / (velocity + 1), mMinWidth);
+        return Math.max(velocityWidth*pressure,mMinWidth);
     }
 
     /**
@@ -604,15 +624,13 @@ public class SignaturePad extends View {
         }
     }
 
-    private int convertDpToPx(float dp) {
+    private int convertDpToPx(float dp){
         return Math.round(getContext().getResources().getDisplayMetrics().density * dp);
     }
 
     public interface OnSignedListener {
         void onStartSigning();
-
         void onSigned();
-
         void onClear();
     }
 
