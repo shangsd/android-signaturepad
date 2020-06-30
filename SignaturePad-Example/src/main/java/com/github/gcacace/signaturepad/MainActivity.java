@@ -10,11 +10,13 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
+
 import android.util.Log;
 import android.view.View;
-import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.github.gcacace.signaturepad.views.SignaturePad;
@@ -32,8 +34,8 @@ public class MainActivity extends Activity {
     private static final int REQUEST_EXTERNAL_STORAGE = 1;
     private static String[] PERMISSIONS_STORAGE = {Manifest.permission.WRITE_EXTERNAL_STORAGE};
     private SignaturePad mSignaturePad;
-    private Button mClearButton;
-    private Button mSaveButton;
+    private TextView mClear;
+    private TextView mSave;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,7 +43,7 @@ public class MainActivity extends Activity {
         verifyStoragePermissions(this);
         setContentView(R.layout.activity_main);
 
-        mSignaturePad = (SignaturePad) findViewById(R.id.signature_pad);
+        mSignaturePad = findViewById(R.id.signature_pad);
         mSignaturePad.setOnSignedListener(new SignaturePad.OnSignedListener() {
             @Override
             public void onStartSigning() {
@@ -50,28 +52,28 @@ public class MainActivity extends Activity {
 
             @Override
             public void onSigned() {
-                mSaveButton.setEnabled(true);
-                mClearButton.setEnabled(true);
+                mSave.setEnabled(true);
+                mClear.setEnabled(true);
             }
 
             @Override
             public void onClear() {
-                mSaveButton.setEnabled(false);
-                mClearButton.setEnabled(false);
+                mSave.setEnabled(false);
+                mClear.setEnabled(false);
             }
         });
 
-        mClearButton = (Button) findViewById(R.id.clear_button);
-        mSaveButton = (Button) findViewById(R.id.save_button);
+        mClear = findViewById(R.id.clear);
+        mSave = findViewById(R.id.save);
 
-        mClearButton.setOnClickListener(new View.OnClickListener() {
+        mClear.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 mSignaturePad.clear();
             }
         });
 
-        mSaveButton.setOnClickListener(new View.OnClickListener() {
+        mSave.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 Bitmap signatureBitmap = mSignaturePad.getSignatureBitmap();
@@ -82,7 +84,7 @@ public class MainActivity extends Activity {
                 }
 
                 String signatureSvg = mSignaturePad.getSignatureSvg();
-                Log.e("test__",signatureSvg);
+                Log.e("test__", signatureSvg);
                 if (addSvgSignatureToGallery(signatureSvg)) {
                     Toast.makeText(MainActivity.this, "SVG Signature saved into the Gallery", Toast.LENGTH_SHORT).show();
                 } else {
