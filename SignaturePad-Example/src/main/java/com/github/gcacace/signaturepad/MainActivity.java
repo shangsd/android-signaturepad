@@ -36,6 +36,7 @@ public class MainActivity extends Activity {
     private SignaturePad mSignaturePad;
     private TextView mClear;
     private TextView mSave;
+    private TextView mEraser;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,6 +66,21 @@ public class MainActivity extends Activity {
 
         mClear = findViewById(R.id.clear);
         mSave = findViewById(R.id.save);
+        mEraser = findViewById(R.id.eraser);
+
+        mEraser.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (mSignaturePad.isEraserType()) {
+                    mSignaturePad.setPenType(SignaturePad.TYPE_PEN);
+                    Toast.makeText(MainActivity.this, "当前是画笔模式", Toast.LENGTH_SHORT);
+                } else {
+                    mSignaturePad.setPenType(SignaturePad.TYPE_ERASER);
+                    Toast.makeText(MainActivity.this, "当前是橡皮擦模式", Toast.LENGTH_SHORT);
+
+                }
+            }
+        });
 
         mClear.setOnClickListener(new View.OnClickListener() {
             @Override

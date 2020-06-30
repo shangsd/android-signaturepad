@@ -20,6 +20,7 @@ import com.github.gcacace.signaturepad.R;
 import com.github.gcacace.signaturepad.utils.Bezier;
 import com.github.gcacace.signaturepad.utils.BitmapUtils;
 import com.github.gcacace.signaturepad.utils.ControlTimedPoints;
+import com.github.gcacace.signaturepad.utils.Eraser;
 import com.github.gcacace.signaturepad.utils.SvgBuilder;
 import com.github.gcacace.signaturepad.utils.TimedPoint;
 import com.github.gcacace.signaturepad.view.ViewCompat;
@@ -29,6 +30,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SignaturePad extends View {
+
+
+    public static final int TYPE_PEN = 0;
+    public static final int TYPE_ERASER = 1;
+
     //View state
     private List<TimedPoint> mPoints;
     private boolean mIsEmpty;
@@ -46,6 +52,16 @@ public class SignaturePad extends View {
     private List<TimedPoint> mPointsCache = new ArrayList<>();
     private ControlTimedPoints mControlTimedPointsCached = new ControlTimedPoints();
     private Bezier mBezierCached = new Bezier();
+
+
+    private Boolean isEraser = false;
+    private Eraser eraser;
+
+    // 是否允许手写
+    private Boolean isFingerEnable = true;
+
+    //记录手写笔类型：触控笔/手指
+    private int toolType = 0;
 
     //Configurable parameters
     private int mMinWidth;
@@ -98,28 +114,17 @@ public class SignaturePad extends View {
         //Dirty rectangle to update only the changed portion of the view
         mDirtyRect = new RectF();
 
+        eraser = new Eraser(convertDpToPx(20));
+
         clearView();
 
     }
 
-    /*
-    @Override
-    protected Parcelable onSaveInstanceState() {
-        Bundle bundle = new Bundle();
-        bundle.putParcelable("superState", super.onSaveInstanceState());
-        if(this.mHasEditState == null || this.mHasEditState){
-            this.mBitmapSavedState = this.getTransparentSignatureBitmap();
-        }
-        bundle.putParcelable("signatureBitmap", this.mBitmapSavedState);
-        return bundle;
-    }*/
-
     @Override
     protected void onRestoreInstanceState(Parcelable state) {
-        if (state instanceof Bundle)
-        {
+        if (state instanceof Bundle) {
             Bundle bundle = (Bundle) state;
-            this.setSignatureBitmap((Bitmap)bundle.getParcelable("signatureBitmap"));
+            this.setSignatureBitmap((Bitmap) bundle.getParcelable("signatureBitmap"));
             this.mBitmapSavedState = bundle.getParcelable("signatureBitmap");
             state = bundle.getParcelable("superState");
         }
@@ -139,6 +144,25 @@ public class SignaturePad extends View {
         } catch (Resources.NotFoundException ex) {
             setPenColor(Color.parseColor("#000000"));
         }
+    }
+
+
+    /**
+     * 设置画笔样式
+     *
+     * @param penType
+     */
+    public void setPenType(int penType) {
+        isEraser = false;
+        switch (penType) {
+            case TYPE_PEN:
+
+                break;
+            case TYPE_ERASER:
+                isEraser = true;
+                break;
+        }
+        invalidate();
     }
 
     /**
@@ -177,6 +201,10 @@ public class SignaturePad extends View {
         mVelocityFilterWeight = velocityFilterWeight;
     }
 
+    public Boolean isEraserType(){
+        return isEraser;
+    }
+
     public void clearView() {
         mSvgBuilder.clear();
         mPoints = new ArrayList<>();
@@ -203,34 +231,47 @@ public class SignaturePad extends View {
         if (!isEnabled())
             return false;
 
+
+        toolType = event.getToolType(event.getActionIndex());
+        if (!isFingerEnable && toolType != MotionEvent.TOOL_TYPE_STYLUS) {
+            return false;
+        }
+
         float eventX = event.getX();
         float eventY = event.getY();
 
-        switch (event.getAction()) {
-            case MotionEvent.ACTION_DOWN:
-                getParent().requestDisallowInterceptTouchEvent(true);
-                mPoints.clear();
-                if (isDoubleClick()) break;
-                mLastTouchX = eventX;
-                mLastTouchY = eventY;
-                addPoint(getNewPoint(eventX, eventY), event.getPressure());
-                if(mOnSignedListener != null) mOnSignedListener.onStartSigning();
 
-            case MotionEvent.ACTION_MOVE:
-                resetDirtyRect(eventX, eventY);
-                addPoint(getNewPoint(eventX, eventY), event.getPressure());
-                break;
+        if (isEraser) {
+            eraser.handleEraserEvent(event, mSignatureBitmapCanvas);
+        } else {
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    getParent().requestDisallowInterceptTouchEvent(true);
+                    mPoints.clear();
+                    if (isDoubleClick()) break;
+                    mLastTouchX = eventX;
+                    mLastTouchY = eventY;
+                    addPoint(getNewPoint(eventX, eventY), event.getPressure());
+                    if (mOnSignedListener != null) mOnSignedListener.onStartSigning();
 
-            case MotionEvent.ACTION_UP:
-                resetDirtyRect(eventX, eventY);
-                addPoint(getNewPoint(eventX, eventY), event.getPressure());
-                getParent().requestDisallowInterceptTouchEvent(true);
-                setIsEmpty(false);
-                break;
+                case MotionEvent.ACTION_MOVE:
+                    resetDirtyRect(eventX, eventY);
+                    addPoint(getNewPoint(eventX, eventY), event.getPressure());
+                    break;
 
-            default:
-                return false;
+                case MotionEvent.ACTION_UP:
+                    resetDirtyRect(eventX, eventY);
+                    addPoint(getNewPoint(eventX, eventY), event.getPressure());
+                    getParent().requestDisallowInterceptTouchEvent(true);
+                    setIsEmpty(false);
+                    break;
+
+                default:
+                    return false;
+            }
         }
+
+
 
         //invalidate();
         invalidate(
@@ -439,7 +480,7 @@ public class SignaturePad extends View {
             timedPoint = new TimedPoint();
         } else {
             // Get point from cache
-            timedPoint = mPointsCache.remove(mCacheSize-1);
+            timedPoint = mPointsCache.remove(mCacheSize - 1);
         }
 
         return timedPoint.set(x, y);
@@ -566,8 +607,8 @@ public class SignaturePad extends View {
     }
 
     private float strokeWidth(float velocity, float pressure) {
-        float velocityWidth =  Math.max(mMaxWidth / (velocity + 1), mMinWidth);
-        return Math.max(velocityWidth*pressure,mMinWidth);
+        float velocityWidth = Math.max(mMaxWidth / (velocity + 1), mMinWidth);
+        return Math.max(velocityWidth * pressure, mMinWidth);
     }
 
     /**
@@ -624,13 +665,15 @@ public class SignaturePad extends View {
         }
     }
 
-    private int convertDpToPx(float dp){
+    private int convertDpToPx(float dp) {
         return Math.round(getContext().getResources().getDisplayMetrics().density * dp);
     }
 
     public interface OnSignedListener {
         void onStartSigning();
+
         void onSigned();
+
         void onClear();
     }
 

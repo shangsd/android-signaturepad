@@ -1,14 +1,14 @@
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:signature="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:orientation="vertical">
 
 
     <com.github.gcacace.signaturepad.views.SignaturePad
         android:id="@+id/signature_pad"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="0dp"
+        android:layout_weight="1" />
 
     <LinearLayout
         android:id="@+id/buttons_container"
@@ -23,9 +23,9 @@
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:enabled="false"
             android:gravity="center"
-            android:text="undo" />
+            android:text="undo"
+            android:textColor="@android:color/black" />
 
         <View
             android:layout_width="0.5dp"
@@ -39,9 +39,9 @@
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:enabled="false"
             android:gravity="center"
-            android:text="redo" />
+            android:text="redo"
+            android:textColor="@android:color/black" />
 
         <View
             android:layout_width="0.5dp"
@@ -54,9 +54,9 @@
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:enabled="false"
             android:gravity="center"
-            android:text="eraser" />
+            android:text="eraser"
+            android:textColor="@android:color/black" />
 
         <View
             android:layout_width="0.5dp"
@@ -71,7 +71,8 @@
             android:layout_weight="1"
             android:enabled="false"
             android:gravity="center"
-            android:text="clear" />
+            android:text="clear"
+            android:textColor="@android:color/black" />
 
         <View
             android:layout_width="0.5dp"
@@ -86,7 +87,8 @@
             android:layout_weight="1"
             android:enabled="false"
             android:gravity="center"
-            android:text="save" />
+            android:text="save"
+            android:textColor="@android:color/black" />
     </LinearLayout>
 
-</RelativeLayout>
+</LinearLayout>
